@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            scroll-behavior: smooth; /* Enables smooth scrolling */
+        }
+
+        nav {
+            background-color: #1877f2;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed; /* Fixes the nav at the top */
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-right: 1rem;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .auth-buttons {
+            display: flex;
+        }
+
+        .auth-buttons a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin-left: 1.5rem;
+            background-color: #3682f4;
+            font-weight: bold;
+        }
+
+        .auth-buttons a.signup {
+            background-color: #3682f4;
+        }
+
+        .parallax {
+            background-image: url('https://t4.ftcdn.net/jpg/04/61/47/03/360_F_461470323_6TMQSkCCs9XQoTtyer8VCsFypxwRiDGU.jpg');
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+            z-index: 0; /* Ensure this is below other content */
+        }
+
+        .parallax-content {
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+            padding: 2rem;
+            border-radius: 8px;
+        }
+
+        .content-container {
+            display: flex;
+            justify-content: space-between; /* Ensures containers are side by side */
+            width: 100%;
+            max-width: 1200px;
+            gap: 2rem; /* Gap between the containers */
+            margin: 2rem auto; /* Gap from the top */
+            position: relative;
+            z-index: 10; /* Ensure this is above the parallax */
+        }
+
+        .data-entry-container, .data-view-container {
+            background-color: rgb(255, 255, 255);
+            padding: 2rem;
+            border-radius: 8px;
+            width: calc(50% - 1rem); /* Adjust width to account for gap */
+            text-align: center;
+            margin-bottom: 2rem; /* Gap at the bottom for stacking on smaller screens */
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #1877f2;
+            color: white;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 1rem;
+        }
+
+        .form-container {
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-top: 1rem;
+        }
+
+
+
+        .about-container {
+            background-color: white;
+            padding: 4rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 2rem auto;
+            max-width: 800px;
+            text-align: center;
+            position: relative;
+            z-index: 10; /* Ensure this is above the parallax */
+        }
+
+        @media (max-width: 768px) {
+            .content-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem; /* Adjust gap for smaller screens */
+            }
+
+            .data-entry-container, .data-view-container {
+                width: 90%; /* Full width with some margin for small screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}">Home</a></li>
+            <li><a href="#about">About</a></li> <!-- Link to scroll to About Us section -->
+        </ul>
+        <div class="auth-buttons">
+            {% if 'email' in session %}
+                <a href="{{ url_for('logout') }}" class="button">Logout</a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="login">Login</a>
+                <a href="{{ url_for('signup') }}" class="signup">Sign Up</a>
+            {% endif %} </div>
+    </nav>
+
+    <div class="parallax">
+        <div class="parallax-content">
+            <h1>Welcome to Financial Report Management</h1>
+            <p>Empowering you to manage your finances with ease and confidence.</p>
+        </div>
+    </div>
+
+    <div class="image">
+    <div class="content-container">
+        <div class="data-entry-container">
+            <img src="https://b2126106.smushcdn.com/2126106/wp-content/uploads/2017/02/credit-card-cash-1024x512.png?lossy=1&strip=1&webp=1" width="100%" height="50%" alt="img">
+            <h2>Enter Financial Data</h2>
+            <p>Track your daily income and expenditure here.</p>
+            <a href="{{ url_for('add_financial_data') }}" class="button">Enter Data</a>
+        </div>
+        <div class="data-view-container">
+            <img src="https://media.licdn.com/dms/image/v2/D4D12AQEEWyTRBB6r0w/article-inline_image-shrink_400_744/article-inline_image-shrink_400_744/0/1696322939278?e=1730332800&v=beta&t=VO6w3oWhbvDAaG0i48gaG2meRX72E3J2D_Nl1FR4-d8" width="100%" height="50%" alt="img">
+            <h2>View Financial Reports</h2>
+            <p>Analyze your financial data with graphs and charts.</p>
+            <a href="{{ url_for('view_financial_data') }}" class="button">View Reports</a>
+        </div>
+        <div class="data-view-container">
+            <img src="https://media.licdn.com/dms/image/v2/D4D12AQEEWyTRBB6r0w/article-inline_image-shrink_400_744/article-inline_image-shrink_400_744/0/1696322939278?e=1730332800&v=beta&t=VO6w3oWhbvDAaG0i48gaG2meRX72E3J2D_Nl1FR4-d8" width="100%" height="50%" alt="img">
+            <h2>view table or update Financial Reports</h2>
+            <p>Analyze your financial data with table format </p>
+            <a href="{{ url_for('view_financial_data_tables') }}" class="button">View Reports</a>
+        </div>
+    </div>
+    <!-- About Us Section -->
+    <div class="about-container" id="about">
+        <h2>About Us</h2>
+        <p>Welcome to Financial Report Management, your trusted partner in financial management and reporting. We are dedicated to providing a comprehensive and user-friendly platform designed to help individuals and businesses track, manage, and analyze their financial data with ease.</p>
+        
+    </div>
+</body>
+</html>

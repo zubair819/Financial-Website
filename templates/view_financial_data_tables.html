@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Data Table</title>
+    <style>
+        nav {
+    background-color: #1877f2;
+    padding: 1rem;
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+nav ul li {
+    margin-right: 1rem;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+}
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .update-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 6px 10px;
+            border: none;
+            cursor: pointer;
+        }
+        .update-btn:hover {
+            background-color: #45a049;
+        }
+
+
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}">Home</a></li>
+            
+        </ul>
+    </nav>
+    <h1>Financial Data Table</h1>
+    <table>
+        
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Income</th>
+                <th>Entertainment</th>
+                <th>Grocery</th>
+                <th>Snacks</th>
+                <th>Bills</th>
+                <th>Salaries</th>
+                <th>Total Expenditure</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in financial_data %}
+            <tr>
+                <td>{{ entry.date }}</td>
+                <td>{{ entry.income }}</td>
+                <td>{{ entry.entertainment }}</td>
+                <td>{{ entry.grocery }}</td>
+                <td>{{ entry.snacks }}</td>
+                <td>{{ entry.bills }}</td>
+                <td>{{ entry.salaries }}</td>
+                <td>{{ entry.total_expenditure }}</td>
+                <td>
+                    <form action="{{ url_for('add_financial_data') }}" method="get">
+                        <input type="hidden" name="date" value="{{ entry.date }}">
+                        <button type="submit" class="update-btn">Update</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Financial Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        nav {
+            background-color: #2165f8;
+            padding: 10px 0;
+        }
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: left;
+        }
+        nav ul li {
+            margin: 0 10px;
+        }
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        .chart-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .chart-row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .chart-col {
+            flex: 1;
+            margin: 0 10px;
+        }
+        
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .chart-row {
+                flex-direction: column;
+            }
+            .chart-col {
+                margin: 10px 0;
+            }
+            .chart-container {
+                width: 95%;
+                padding: 10px;
+            }
+            h2 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}">Home</a></li>
+            
+        </ul>
+    </nav>
+    
+    <div class="chart-row">
+        <div class="chart-col">
+            <h2>Earnings Over Time</h2>
+            <canvas id="earningsChart"></canvas>
+        </div>
+        <div class="chart-col">
+            <h2>Earnings vs Total Expenditure</h2>
+            <canvas id="earningsVsExpenditureChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-col">
+            <h2>Daily Profit</h2>
+            <canvas id="dailyProfitChart"></canvas>
+        </div>
+        <div class="chart-col">
+            <h2>Overall Expenditure Breakdown</h2>
+            <canvas id="overallExpenditureChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-col">
+            <h2>Expenditure Breakdown per Day</h2>
+            <canvas id="dailyExpenditureChart"></canvas>
+        </div>
+        <div class="chart-col">
+            <h2>Monthly Average Comparison</h2>
+            <canvas id="monthlyAverageChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h2>Loss Days Count</h2>
+        <canvas id="lossDaysChart"></canvas>
+    </div>
+
+    <script>
+        // Earnings Over Time (Line Chart)
+        var ctx1 = document.getElementById('earningsChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: {{ dates|tojson }},
+                datasets: [{
+                    label: 'Earnings',
+                    data: {{ earnings|tojson }},
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Earnings vs Total Expenditure (Combined Line and Bar Chart)
+        var ctx2 = document.getElementById('earningsVsExpenditureChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: {{ dates|tojson }},
+                datasets: [
+                    {
+                        label: 'Earnings',
+                        data: {{ earnings|tojson }},
+                        type: 'line',
+                        borderColor: 'rgb(75, 192, 192)',
+                        fill: false
+                    },
+                    {
+                        label: 'Total Expenditure',
+                        data: {{ daily_expenditures|tojson }}.map(day => day.reduce((a, b) => a + b, 0)),
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Daily Profit (Bar Chart)
+        var ctx3 = document.getElementById('dailyProfitChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: {{ dates|tojson }},
+                datasets: [{
+                    label: 'Daily Profit',
+                    data: {{ profits|tojson }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Overall Expenditure Breakdown (Pie Chart)
+        var ctx4 = document.getElementById('overallExpenditureChart').getContext('2d');
+        new Chart(ctx4, {
+            type: 'pie',
+            data: {
+                labels: ['Entertainment', 'Grocery', 'Snacks', 'Bills', 'Salaries'],
+                datasets: [{
+                    data: [
+                        {{ expenditures['entertainment']|tojson }}.reduce((a, b) => a + b, 0),
+                        {{ expenditures['grocery']|tojson }}.reduce((a, b) => a + b, 0),
+                        {{ expenditures['snacks']|tojson }}.reduce((a, b) => a + b, 0),
+                        {{ expenditures['bills']|tojson }}.reduce((a, b) => a + b, 0),
+                        {{ expenditures['salaries']|tojson }}.reduce((a, b) => a + b, 0)
+                    ],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+
+        // Expenditure Breakdown per Day (Stacked Bar Chart)
+        var ctx5 = document.getElementById('dailyExpenditureChart').getContext('2d');
+        new Chart(ctx5, {
+            type: 'bar',
+            data: {
+                labels: {{ dates|tojson }},
+                datasets: [
+                    {
+                        label: 'Entertainment',
+                        data: {{ daily_expenditures|tojson }}.map(day => day[0]),
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    },
+                    {
+                        label: 'Grocery',
+                        data: {{ daily_expenditures|tojson }}.map(day => day[1]),
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                    },
+                    {
+                        label: 'Snacks',
+                        data: {{ daily_expenditures|tojson }}.map(day => day[2]),
+                        backgroundColor: 'rgba(255, 206, 86, 0.6)'
+                    },
+                    {
+                        label: 'Bills',
+                        data: {{ daily_expenditures|tojson }}.map(day => day[3]),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    },
+                    {
+                        label: 'Salaries',
+                        data: {{ daily_expenditures|tojson }}.map(day => day[4]),
+                        backgroundColor: 'rgba(153, 102, 255, 0.6)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true
+                    }
+                }
+            }
+        });
+
+        // Monthly Average Comparison (Radar Chart)
+        var ctx6 = document.getElementById('monthlyAverageChart').getContext('2d');
+        new Chart(ctx6, {
+            type: 'radar',
+            data: {
+                labels: ['Earnings', 'Entertainment', 'Grocery', 'Snacks', 'Bills', 'Salaries'],
+                datasets: [{
+                    label: 'Monthly Average',
+                    data: [
+                        {{ earnings|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }},
+                        {{ expenditures['entertainment']|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }},
+                        {{ expenditures['grocery']|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }},
+                        {{ expenditures['snacks']|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }},
+                        {{ expenditures['bills']|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }},
+                        {{ expenditures['salaries']|tojson }}.reduce((a, b) => a + b, 0) / {{ dates|length }}
+                    ],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    pointBackgroundColor: 'rgb(75, 192, 192)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(75, 192, 192)'
+                }]
+            },
+            options: {
+                responsive: true,
+                elements: {
+                    line: {
+                        borderWidth: 3
+                    }
+                }
+            }
+        });
+
+        // Loss Days Count (Bar Chart)
+        var ctx7 = document.getElementById('lossDaysChart').getContext('2d');
+        new Chart(ctx7, {
+            type: 'bar',
+            data: {
+                labels: ['Loss Days'],
+                datasets: [{
+                    label: 'Number of Loss Days',
+                    data: [{{ loss_days }}],
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
