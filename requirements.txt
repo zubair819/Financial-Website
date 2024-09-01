@@ -2,5 +2,4 @@ Flask
 gunicorn
 mysql-connector-python
 bcrypt
-smtplib
 email
