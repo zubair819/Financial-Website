@@ -87,7 +87,8 @@ def login():
         email = request.form['email']
         password = request.form['password']
         user = users.find_one({'email': email})
-        if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
             session['email'] = email
             return redirect(url_for('dashboard'))
         else:
