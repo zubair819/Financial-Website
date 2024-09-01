@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from mysql.connector import connect, Error
+from pymongo import MongoClient
 import random
 import smtplib
 from email.mime.text import MIMEText
@@ -9,24 +9,19 @@ from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Use environment variable for secret key
+app.secret_key = os.getenv('SECRET_KEY')  # Retrieve secret key from environment variables
 
-# MySQL configuration (use environment variables)
-DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', 'zubair084'),
-    'database': os.environ.get('DB_NAME', 'financial_website')
-}
+# MongoDB setup
+client = MongoClient(os.getenv('MONGO_URI'))
+db = client['Financial_Website']
+users = db['signup']
+financial_data = db['financial_data']
 
-# Email configuration (use environment variables)
+# Email configuration
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '944829zubair@gmail.com')
-SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', 'ruar tyto evdl yjfx')
-
-def get_db_connection():
-    return connect(**DB_CONFIG)
+SMTP_USERNAME = os.getenv('SMTP_USERNAME')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
 
 def send_otp(email, otp):
     message = MIMEMultipart()
@@ -56,13 +51,7 @@ def signup():
         email = request.form['email']
         password = request.form['password']
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        if cursor.fetchone():
-            cursor.close()
-            conn.close()
+        if users.find_one({'email': email}):
             return "Email already registered!"
         
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -70,13 +59,9 @@ def signup():
         otp = str(random.randint(100000, 999999))
         session['signup_otp'] = otp
         session['signup_email'] = email
-        session['signup_password'] = hashed_password
+        session['signup_password'] = hashed_password.decode('utf-8')
         
         send_otp(email, otp)
-        
-        cursor.close()
-        conn.close()
-        
         return redirect(url_for('verify_signup_otp'))
     
     return render_template('signup.html')
@@ -86,16 +71,10 @@ def verify_signup_otp():
     if request.method == 'POST':
         user_otp = request.form['otp']
         if user_otp == session['signup_otp']:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)",
-                           (session['signup_email'], session['signup_password']))
-            conn.commit()
-            
-            cursor.close()
-            conn.close()
-            
+            users.insert_one({
+                'email': session['signup_email'],
+                'password': session['signup_password']
+            })
             return redirect(url_for('login'))
         else:
             return "Invalid OTP. Please try again."
@@ -107,51 +86,27 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
-        
-        if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):
+        user = users.find_one({'email': email})
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             session['email'] = email
-            cursor.close()
-            conn.close()
             return render_template('index.html')
         else:
-            cursor.close()
-            conn.close()
             return "Invalid credentials!"
-    
     return render_template('login.html')
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form['email']
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
-        
+        user = users.find_one({'email': email})
         if user:
             otp = str(random.randint(100000, 999999))
             session['reset_otp'] = otp
             session['reset_email'] = email
             send_otp(email, otp)
-            
-            cursor.close()
-            conn.close()
-            
             return redirect(url_for('verify_reset_otp'))
         else:
-            cursor.close()
-            conn.close()
             return "Email not found!"
-    
     return render_template('forgot_password.html')
 
 @app.route('/verify_reset_otp', methods=['GET', 'POST'])
@@ -168,20 +123,12 @@ def verify_reset_otp():
 def reset_password():
     if request.method == 'POST':
         new_password = request.form['new_password']
-        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("UPDATE users SET password = %s WHERE email = %s",
-                       (hashed_password, session['reset_email']))
-        conn.commit()
-        
-        cursor.close()
-        conn.close()
-        
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        users.update_one(
+            {'email': session['reset_email']},
+            {'$set': {'password': hashed_password}}
+        )
         return redirect(url_for('login'))
-    
     return render_template('reset_password.html')
 
 @app.route('/add_financial_data', methods=['GET', 'POST'])
@@ -197,35 +144,50 @@ def add_financial_data():
         snacks = float(request.form.get('snacks', 0))
         bills = float(request.form.get('bills', 0))
         salaries = float(request.form.get('salaries', 0))
-        
         total_expenditure = entertainment + grocery + snacks + bills + salaries
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE email = %s", (session['email'],))
-        user_id = cursor.fetchone()[0]
-
-        cursor.execute("""
-            INSERT INTO financial_data 
-            (user_id, date, income, entertainment, grocery, snacks, bills, salaries, total_expenditure)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-            income = VALUES(income),
-            entertainment = VALUES(entertainment),
-            grocery = VALUES(grocery),
-            snacks = VALUES(snacks),
-            bills = VALUES(bills),
-            salaries = VALUES(salaries),
-            total_expenditure = VALUES(total_expenditure)
-        """, (user_id, date, income, entertainment, grocery, snacks, bills, salaries, total_expenditure))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-
+        existing_data = financial_data.find_one({
+            'user_email': session['email'],
+            'date': date
+        })
+       
+        if existing_data:
+            financial_data.update_one(
+                {'_id': existing_data['_id']},
+                {'$set': {
+                    'income': income,
+                    'entertainment': entertainment,
+                    'grocery': grocery,
+                    'snacks': snacks,
+                    'bills': bills,
+                    'salaries': salaries,
+                    'total_expenditure': total_expenditure
+                }}
+            )
+        else:
+            financial_data.insert_one({
+                'user_email': session['email'],
+                'date': date,
+                'income': income,
+                'entertainment': entertainment,
+                'grocery': grocery,
+                'snacks': snacks,
+                'bills': bills,
+                'salaries': salaries,
+                'total_expenditure': total_expenditure
+            })
+       
         return redirect(url_for('view_financial_data_tables'))
    
+    date = request.args.get('date')
+    if date:
+        existing_data = financial_data.find_one({
+            'user_email': session['email'],
+            'date': date
+        })
+        if existing_data:
+            return render_template('add_financial_data.html', data=existing_data)
+
     today = datetime.now()
     one_month_ago = today - timedelta(days=30)
     return render_template('add_financial_data.html', min_date=one_month_ago.date(), max_date=today.date())
@@ -239,23 +201,11 @@ def view_financial_data():
         start_date = request.form['start_date']
         end_date = request.form['end_date']
        
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute("SELECT id FROM users WHERE email = %s", (session['email'],))
-        user_id = cursor.fetchone()['id']
-
-        cursor.execute("""
-            SELECT * FROM financial_data
-            WHERE user_id = %s AND date BETWEEN %s AND %s
-            ORDER BY date
-        """, (user_id, start_date, end_date))
-        
-        data = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-
+        data = financial_data.find({
+            'user_email': session['email'],
+            'date': {'$gte': start_date, '$lte': end_date}
+        }).sort('date')
+       
         dates = []
         earnings = []
         expenditures = {
@@ -270,33 +220,48 @@ def view_financial_data():
         daily_expenditures = []
 
         for entry in data:
-            dates.append(entry['date'].strftime('%Y-%m-%d'))
-            earnings.append(entry['income'])
-            expenditures['entertainment'].append(entry['entertainment'])
-            expenditures['grocery'].append(entry['grocery'])
-            expenditures['snacks'].append(entry['snacks'])
-            expenditures['bills'].append(entry['bills'])
-            expenditures['salaries'].append(entry['salaries'])
-            profit = entry['income'] - entry['total_expenditure']
+            dates.append(entry['date'])
+            income = entry.get('income', 0)
+            earnings.append(income)
+           
+            total_expenditure = sum(entry.get(key, 0) for key in expenditures.keys())
+            profit = income - total_expenditure
             profits.append(profit)
-
             if profit < 0:
                 loss_days += 1
+            
+            daily_exp = []
+            for key in expenditures.keys():
+                value = entry.get(key, 0)
+                expenditures[key].append(value)
+                daily_exp.append(value)
+            daily_expenditures.append(daily_exp)
 
-            daily_expenditures.append(entry['total_expenditure'])
-
-        context = {
-            'dates': dates,
-            'earnings': earnings,
-            'expenditures': expenditures,
-            'profits': profits,
-            'loss_days': loss_days,
-            'daily_expenditures': daily_expenditures
-        }
-        
-        return render_template('graph.html', **context)
-    
+        dates = list(dates)
+        earnings = list(earnings)
+        profits = list(profits)
+        daily_expenditures = [list(day) for day in daily_expenditures]
+       
+        return render_template(
+            'financial_graphs.html',
+            dates=dates,
+            earnings=earnings,
+            expenditures=expenditures,
+            profits=profits,
+            loss_days=loss_days,
+            daily_expenditures=daily_expenditures
+        )
+   
     return render_template('view_financial_data.html')
 
+@app.route('/view_financial_data_tables')
+def view_financial_data_tables():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+
+    user_data = financial_data.find({'user_email': session['email']}).sort('date', -1)
+
+    return render_template('view_financial_data_tables.html', financial_data=user_data)
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)
