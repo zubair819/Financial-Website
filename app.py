@@ -48,23 +48,37 @@ def logout():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
+        try:
+            email = request.form['email']
+            password = request.form['password']
+            
+            # Check if the email is already registered
+            if users.find_one({'email': email}):
+                return "Email already registered! Please use a different email."
+            
+            # Hash the password
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            
+            # Generate OTP
+            otp = str(random.randint(100000, 999999))
+            
+            # Store OTP and user details in the session
+            session['signup_otp'] = otp
+            session['signup_email'] = email
+            session['signup_password'] = hashed_password.decode('utf-8')
+            
+            # Send OTP email
+            send_otp(email, otp)
+            
+            return redirect(url_for('verify_signup_otp'))
         
-        if users.find_one({'email': email}):
-            return "Email already registered!"
-        
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        
-        otp = str(random.randint(100000, 999999))
-        session['signup_otp'] = otp
-        session['signup_email'] = email
-        session['signup_password'] = hashed_password.decode('utf-8')
-        
-        send_otp(email, otp)
-        return redirect(url_for('verify_signup_otp'))
+        except Exception as e:
+            # Log the exception and show a user-friendly message
+            print(f"An error occurred during signup: {e}")
+            return "An error occurred during signup. Please try again later."
     
     return render_template('signup.html')
+
 
 @app.route('/verify_signup_otp', methods=['GET', 'POST'])
 def verify_signup_otp():
