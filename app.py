@@ -6,23 +6,24 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import bcrypt
 from datetime import datetime, timedelta
+import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Set a secret key for session management
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Use environment variable for secret key
 
-# MySQL configuration
+# MySQL configuration (use environment variables)
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'zubair084',
-    'database': 'financial_website'
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'zubair084'),
+    'database': os.environ.get('DB_NAME', 'financial_website')
 }
 
-# Email configuration
+# Email configuration (use environment variables)
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USERNAME = '944829zubair@gmail.com'
-SMTP_PASSWORD = 'ruar tyto evdl yjfx'
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '944829zubair@gmail.com')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', 'ruar tyto evdl yjfx')
 
 def get_db_connection():
     return connect(**DB_CONFIG)
@@ -270,57 +271,32 @@ def view_financial_data():
 
         for entry in data:
             dates.append(entry['date'].strftime('%Y-%m-%d'))
-            income = entry['income']
-            earnings.append(income)
-           
-            total_expenditure = entry['total_expenditure']
-            profit = income - total_expenditure
+            earnings.append(entry['income'])
+            expenditures['entertainment'].append(entry['entertainment'])
+            expenditures['grocery'].append(entry['grocery'])
+            expenditures['snacks'].append(entry['snacks'])
+            expenditures['bills'].append(entry['bills'])
+            expenditures['salaries'].append(entry['salaries'])
+            profit = entry['income'] - entry['total_expenditure']
             profits.append(profit)
+
             if profit < 0:
                 loss_days += 1
-            
-            daily_exp = []
-            for key in expenditures.keys():
-                value = entry[key]
-                expenditures[key].append(value)
-                daily_exp.append(value)
-            daily_expenditures.append(daily_exp)
 
-        return render_template(
-            'financial_graphs.html',
-            dates=dates,
-            earnings=earnings,
-            expenditures=expenditures,
-            profits=profits,
-            loss_days=loss_days,
-            daily_expenditures=daily_expenditures
-        )
-   
+            daily_expenditures.append(entry['total_expenditure'])
+
+        context = {
+            'dates': dates,
+            'earnings': earnings,
+            'expenditures': expenditures,
+            'profits': profits,
+            'loss_days': loss_days,
+            'daily_expenditures': daily_expenditures
+        }
+        
+        return render_template('graph.html', **context)
+    
     return render_template('view_financial_data.html')
 
-@app.route('/view_financial_data_tables')
-def view_financial_data_tables():
-    if 'email' not in session:
-        return redirect(url_for('login'))
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("SELECT id FROM users WHERE email = %s", (session['email'],))
-    user_id = cursor.fetchone()['id']
-
-    cursor.execute("""
-        SELECT * FROM financial_data
-        WHERE user_id = %s
-        ORDER BY date DESC
-    """, (user_id,))
-    
-    financial_data = cursor.fetchall()
-    
-    cursor.close()
-    conn.close()
-
-    return render_template('view_financial_data_tables.html', financial_data=financial_data)
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
