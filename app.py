@@ -263,5 +263,4 @@ def view_financial_data_tables():
 
     return render_template('view_financial_data_tables.html', financial_data=user_data)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+#if __name__ == '__main__':app.run(debug=True)
