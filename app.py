@@ -89,7 +89,7 @@ def login():
         user = users.find_one({'email': email})
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             session['email'] = email
-            return render_template('index.html')
+            return redirect(url_for('dashboard'))
         else:
             return "Invalid credentials!"
     return render_template('login.html')
