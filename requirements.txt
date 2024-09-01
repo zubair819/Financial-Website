@@ -2,4 +2,3 @@ Flask
 gunicorn
 mysql-connector-python
 bcrypt
-email
