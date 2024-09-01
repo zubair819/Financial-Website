@@ -65,7 +65,7 @@ def signup():
             # Store OTP and user details in the session
             session['signup_otp'] = otp
             session['signup_email'] = email
-            session['signup_password'] = hashed_password.decode('utf-8')
+            session['signup_password'] = hashed_password
             
             # Send OTP email
             send_otp(email, otp)
