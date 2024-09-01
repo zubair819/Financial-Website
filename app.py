@@ -65,7 +65,7 @@ def signup():
             # Store OTP and user details in the session
             session['signup_otp'] = otp
             session['signup_email'] = email
-            session['signup_password'] = hashed_password
+            session['signup_password'] = hashed_password  # Store as bytes
             
             # Send OTP email
             send_otp(email, otp)
@@ -87,7 +87,7 @@ def verify_signup_otp():
         if user_otp == session['signup_otp']:
             users.insert_one({
                 'email': session['signup_email'],
-                'password': session['signup_password']
+                'password': session['signup_password']  # Stored as bytes
             })
             return redirect(url_for('login'))
         else:
@@ -133,6 +133,19 @@ def verify_reset_otp():
         else:
             return "Invalid OTP. Please try again."
     return render_template('verify_otp.html')
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        users.update_one(
+            {'email': session['reset_email']},
+            {'$set': {'password': hashed_password}}  # Store as bytes
+        )
+        return redirect(url_for('login'))
+    return render_template('reset_password.html')
+
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
