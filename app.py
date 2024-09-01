@@ -48,37 +48,23 @@ def logout():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        try:
-            email = request.form['email']
-            password = request.form['password']
-            
-            # Check if the email is already registered
-            if users.find_one({'email': email}):
-                return "Email already registered! Please use a different email."
-            
-            # Hash the password
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            
-            # Generate OTP
-            otp = str(random.randint(100000, 999999))
-            
-            # Store OTP and user details in the session
-            session['signup_otp'] = otp
-            session['signup_email'] = email
-            session['signup_password'] = hashed_password  # Store as bytes
-            
-            # Send OTP email
-            send_otp(email, otp)
-            
-            return redirect(url_for('verify_signup_otp'))
+        email = request.form['email']
+        password = request.form['password']
         
-        except Exception as e:
-            # Log the exception and show a user-friendly message
-            print(f"An error occurred during signup: {e}")
-            return "An error occurred during signup. Please try again later."
+        if users.find_one({'email': email}):
+            return "Email already registered!"
+        
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        
+        otp = str(random.randint(100000, 999999))
+        session['signup_otp'] = otp
+        session['signup_email'] = email
+        session['signup_password'] = hashed_password.decode('utf-8')
+        
+        send_otp(email, otp)
+        return redirect(url_for('verify_signup_otp'))
     
     return render_template('signup.html')
-
 
 @app.route('/verify_signup_otp', methods=['GET', 'POST'])
 def verify_signup_otp():
@@ -87,7 +73,7 @@ def verify_signup_otp():
         if user_otp == session['signup_otp']:
             users.insert_one({
                 'email': session['signup_email'],
-                'password': session['signup_password']  # Stored as bytes
+                'password': session['signup_password']
             })
             return redirect(url_for('login'))
         else:
@@ -101,8 +87,7 @@ def login():
         email = request.form['email']
         password = request.form['password']
         user = users.find_one({'email': email})
-
-        if user and bcrypt.checkpw(password.encode('utf-8'), user['password']):
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             session['email'] = email
             return redirect(url_for('dashboard'))
         else:
@@ -133,19 +118,6 @@ def verify_reset_otp():
         else:
             return "Invalid OTP. Please try again."
     return render_template('verify_otp.html')
-
-@app.route('/reset_password', methods=['GET', 'POST'])
-def reset_password():
-    if request.method == 'POST':
-        new_password = request.form['new_password']
-        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-        users.update_one(
-            {'email': session['reset_email']},
-            {'$set': {'password': hashed_password}}  # Store as bytes
-        )
-        return redirect(url_for('login'))
-    return render_template('reset_password.html')
-
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
