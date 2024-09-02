@@ -70,15 +70,18 @@ def signup():
 def verify_signup_otp():
     if request.method == 'POST':
         user_otp = request.form['otp']
-        if user_otp == session['signup_otp']:
-            users.insert_one({
-                'email': session['signup_email'],
-                'password': session['signup_password']
-            })
-            return redirect(url_for('login'))
+        if user_otp == session.get('signup_otp'):
+            try:
+                users.insert_one({
+                    'email': session.get('signup_email'),
+                    'password': session.get('signup_password')
+                })
+                return redirect(url_for('login'))
+            except Exception as e:
+                flash(f"An error occurred: {e}", 'error')
+                return redirect(url_for('verify_signup_otp'))
         else:
-            return "Invalid OTP. Please try again."
-    
+            flash("Invalid OTP. Please try again.", 'error')
     return render_template('verify_otp.html')
 
 @app.route('/login', methods=['GET', 'POST'])
