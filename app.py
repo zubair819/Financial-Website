@@ -76,7 +76,7 @@ def verify_signup_otp():
                     'email': session.get('signup_email'),
                     'password': session.get('signup_password')
                 })
-                return redirect(url_for('login'))
+                return redirect(url_for('dashboard'))
             except Exception as e:
                 flash(f"An error occurred: {e}", 'error')
                 return redirect(url_for('verify_signup_otp'))
@@ -180,7 +180,7 @@ def add_financial_data():
                 'total_expenditure': total_expenditure
             })
        
-        return render_template('index.html')
+        return redirect(url_for('dashboard'))
    
     date = request.args.get('date')
     if date:
