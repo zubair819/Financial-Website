@@ -180,7 +180,7 @@ def add_financial_data():
                 'total_expenditure': total_expenditure
             })
        
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('view_financial_data_tables'))
    
     date = request.args.get('date')
     if date:
