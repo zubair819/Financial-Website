@@ -76,7 +76,7 @@ def verify_signup_otp():
                     'email': session.get('signup_email'),
                     'password': session.get('signup_password')
                 })
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('login'))
             except Exception as e:
                 flash(f"An error occurred: {e}", 'error')
                 return redirect(url_for('verify_signup_otp'))
